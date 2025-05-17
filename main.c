@@ -7,6 +7,21 @@
 
 #include "libbmp.h"
 
+const char *const VERSION = "v0.0.1";
+const char *const HELP =
+    "usage:\n"
+    "    ./hex_extractor [options]\n\n"
+    ""
+    "options:\n"
+    "    -h            print help message and exit.\n"
+    "    -v            print version message and exit.\n"
+    "    -tw           provide tile width.\n"
+    "    -th           provide tile height.\n"
+    "    -i            provide input file. (must)\n"
+    "    -o            provide output file name. Default:\n"
+    "                      <original_file_name_without_extension>.bmp"
+;
+
 typedef struct _ImgConfig {
     uint32_t tile_x, tile_y, col_count;
 } ImgConfig;
@@ -15,6 +30,69 @@ typedef struct _InputArgs {
     ImgConfig config;
     const char *input_path;
 } InputArgs;
+
+bool isStringRgb(const char *s, char delim);
+uint8_t numFromHexChar(char c);
+uint32_t hexFromRgbString(const char *s);
+void createAndDrawPalette(bmp_img *img, uint32_t *colors,
+                          size_t colors_len, ImgConfig config);
+void getOutputPath(char *out, const char *input_path,
+                  size_t input_path_len);
+void getArgs(InputArgs *out_args, char **argv);
+
+int main(int argc, char **argv) {
+    if (argc < 2) {
+        fprintf(stderr,
+                "err: expected the"
+                "argument [input file].");
+        return 1;
+    }
+
+
+    FILE *input_file_ptr = fopen(argv[1], "r");
+    char line_buf[1024];
+    char *token;
+
+    uint32_t color_arr[1024];
+    size_t color_arr_len = 0;
+
+    while (fgets(line_buf, sizeof(line_buf),
+                 input_file_ptr) != NULL)
+    {
+        token = strtok(line_buf, " ");
+
+        while (token != NULL) {
+            if (!isStringRgb(token, ' ')) {
+                token = strtok(NULL, " ");
+                continue;
+            }
+
+            color_arr[color_arr_len] = hexFromRgbString(token);
+            color_arr_len++;
+
+            token = strtok(NULL, " ");
+        }
+    }
+
+    ImgConfig config = {
+        .tile_x = 64,
+        .tile_y = 64,
+        .col_count = color_arr_len,
+    };
+
+    bmp_img palette_img;
+    char output_path[256];
+
+    createAndDrawPalette(&palette_img, color_arr,
+                         color_arr_len, config);
+
+    getOutputPath(output_path, argv[1], strlen(argv[1]));
+    bmp_img_write(&palette_img, output_path);
+
+    bmp_img_free(&palette_img);
+    fclose(input_file_ptr);
+    return 0;
+}
 
 bool isStringRgb(const char *s, char delim) {
     if (s == NULL || s[0] != '#') {
@@ -131,56 +209,6 @@ void getOutputPath(char *out, const char *input_path,
     }
 }
 
-int main(int argc, char **argv) {
-    if (argc != 2) {
-        fprintf(stderr,
-                "err: expected the"
-                "argument [input file].");
-        return 1;
-    }
-
-
-    FILE *input_file_ptr = fopen(argv[1], "r");
-    char line_buf[1024];
-    char *token;
-
-    uint32_t color_arr[1024];
-    size_t color_arr_len = 0;
-
-    while (fgets(line_buf, sizeof(line_buf),
-                 input_file_ptr) != NULL)
-    {
-        token = strtok(line_buf, " ");
-
-        while (token != NULL) {
-            if (!isStringRgb(token, ' ')) {
-                token = strtok(NULL, " ");
-                continue;
-            }
-
-            color_arr[color_arr_len] = hexFromRgbString(token);
-            color_arr_len++;
-
-            token = strtok(NULL, " ");
-        }
-    }
-
-    ImgConfig config = {
-        .tile_x = 64,
-        .tile_y = 128,
-        .col_count = color_arr_len,
-    };
-
-    bmp_img palette_img;
-    char output_path[256];
-
-    createAndDrawPalette(&palette_img, color_arr,
-                         color_arr_len, config);
-
-    getOutputPath(output_path, argv[1], strlen(argv[1]));
-    bmp_img_write(&palette_img, output_path);
-
-    bmp_img_free(&palette_img);
-    fclose(input_file_ptr);
-    return 0;
-}
+//void getArgs(InputArgs *out_args, char **argv) {
+//    
+//}

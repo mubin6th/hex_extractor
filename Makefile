@@ -1,6 +1,6 @@
 COMPILER=gcc
 SRC=main.c libbmp.c
-EXE=main
+EXE=hex_extractor
 LIBS=-lm
 
 all:
